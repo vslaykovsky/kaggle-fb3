@@ -25,7 +25,7 @@ import sys
 ['cohesion', 'syntax', 'vocabulary', 'phraseology', 'grammar', 'conventions']
 
 #baseline
-[
+base = [
     0.48251612898722873,
     0.44163526218410554,
     0.40993880075686456,
@@ -34,6 +34,21 @@ import sys
     0.439366242020053
 ]
 
+per_col = [
+    0.4782, #
+    0.4369, #
+    0.4093, #
+    0.4496, #
+    0.460, #
+    0.4361, #
+]
+
+import numpy as np
+
+np.mean(np.array(base) - np.array(per_col))
+
+# %%
+np.mean(per_col)
 
 # %%
 try:
@@ -863,14 +878,14 @@ def objective(trial: optuna.Trial):
     # cfg.model = 'microsoft/deberta-v3-large'
     if total_mem == 16:
         if cfg.model == 'microsoft/deberta-v3-base':
-            batch_size = 3
+            batch_size = 2
         elif cfg.model == 'microsoft/deberta-v3-large':
             batch_size = 1
     elif total_mem > 16:
         if cfg.model == 'microsoft/deberta-v3-base':
-            batch_size = 4
-        elif cfg.model == 'microsoft/deberta-v3-large':
             batch_size = 2
+        elif cfg.model == 'microsoft/deberta-v3-large':
+            batch_size = 1
 
     print('batch_size', batch_size)
     virtual_batch_size = trial.suggest_int('virtual_batch_size', 1, 64, log=True)
