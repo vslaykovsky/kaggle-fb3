@@ -723,8 +723,8 @@ def train_loop(cfg: CFG, name, df_folds=None, fold=None, df_train_folds=None, df
         if val_score < best_score:
             best_score = val_score
             best_val_pred = val_pred
-            LOGGER.info(f'Epoch {epoch} - Saving the best model with score {best_score:.4f}')
             if save_model:
+                LOGGER.info(f'Epoch {epoch} - Saving the best model with score {best_score:.4f}')
                 torch.save({'model': model.state_dict(), 'predictions': val_pred}, best_model_file_name)
 
     # val_pred = torch.load(best_model_file_name, map_location=torch.device('cpu'))['predictions']
@@ -868,7 +868,7 @@ def objective(trial: optuna.Trial):
             batch_size = 1
     elif total_mem > 16:
         if cfg.model == 'microsoft/deberta-v3-base':
-            batch_size = 6
+            batch_size = 4
         elif cfg.model == 'microsoft/deberta-v3-large':
             batch_size = 2
 
