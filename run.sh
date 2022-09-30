@@ -20,6 +20,6 @@ fi
 last_gpu=$(($num_gpus - 1))
 
 for i in $(seq 0 $last_gpu); do
-  echo python deberta-train.py cuda:$i $column &
+  python deberta-train.py cuda:$i $column &
 done
 wait

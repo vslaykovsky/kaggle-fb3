@@ -827,6 +827,8 @@ os.environ['TOKENIZERS_PARALLELISM'] = 'True'
 
 
 # pip install transformers tokenizers sentencepiece optuna wandb iterative-stratification matplotlib pandas
+# apt install nano
+# # mkdir -p data/comp-data
 
 import optuna
 from optuna.integration.wandb import WeightsAndBiasesCallback
@@ -839,9 +841,6 @@ if __name__ == "__main__":
         DEVICE, optuna_column = sys.argv[1], sys.argv[2]
         print('Using device', DEVICE)
         print('Optimizing for column', optuna_column)
-        # batch_size = int(batch_size)
-        # print('Using bathc size', batch_size)
-        # CFG.batch_size = (batch_size)
 
 project_name = f"FB3-{optuna_column}"
 wandb_kwargs = {"project": project_name}
@@ -861,7 +860,7 @@ def objective(trial: optuna.Trial):
     cfg.prediction_type = 'regression'  #trial.suggest_categorical('prediction_type', ['regression', 'classification'])
     cfg.scheduler = trial.suggest_categorical('scheduler', ['linear', 'cosine'])
     cfg.model = trial.suggest_categorical('model', ['microsoft/deberta-v3-base', "microsoft/deberta-v3-large"])
-    cfg.model = 'microsoft/deberta-v3-large'
+    # cfg.model = 'microsoft/deberta-v3-large'
     if total_mem == 16:
         if cfg.model == 'microsoft/deberta-v3-base':
             batch_size = 3
@@ -869,9 +868,9 @@ def objective(trial: optuna.Trial):
             batch_size = 1
     elif total_mem > 16:
         if cfg.model == 'microsoft/deberta-v3-base':
-            batch_size = 3
+            batch_size = 6
         elif cfg.model == 'microsoft/deberta-v3-large':
-            batch_size = 1
+            batch_size = 2
 
     print('batch_size', batch_size)
     virtual_batch_size = trial.suggest_int('virtual_batch_size', 1, 64, log=True)
