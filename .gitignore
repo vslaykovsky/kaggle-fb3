@@ -1,0 +1,12 @@
+# Project exclude paths
+/cache_dir/
+/catboost_info/
+/data/
+/models/
+/outputs/
+/runs/
+/scrnnbert-probwordnoise/
+/scrnnelmo-probwordnoise/
+/subwordbert-probwordnoise/
+/tokenizer/
+/wandb/
