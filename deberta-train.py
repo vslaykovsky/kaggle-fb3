@@ -50,7 +50,7 @@ class CFG:
     all_target_cols = ['cohesion', 'syntax', 'vocabulary', 'phraseology', 'grammar', 'conventions']
     target_cols = ['cohesion']
     seed = 42
-    n_fold = 8
+    n_fold = 7
     virtual_batch_size = 3
 
 
@@ -625,28 +625,33 @@ def get_result(df_eval, cfg=CFG):
 
 # %% papermill={"duration": 11979.697909, "end_time": "2022-09-09T19:10:13.399620", "exception": false, "start_time": "2022-09-09T15:50:33.701711", "status": "completed"} tags=[]
 if CFG.train:
-    custom_config = "cohesion"
-    if len(sys.argv) == 3:
-        # python deberta-train.py train cohesion
-        custom_config = sys.argv[2]
+    try:
+        fold = 0
+        if len(sys.argv) == 3:
+            # python deberta-train.py train cohesion
+            fold = sys.argv[2]
 
-    for k, v in CUSTOM_CONFIGS[custom_config].items():
-        setattr(CFG, k, v)
 
-    if CFG.virtual_batch_size <= CFG.batch_size:
-        CFG.batch_size = CFG.virtual_batch_size
-        CFG.gradient_accumulation_steps = 1
-    else:
-        CFG.gradient_accumulation_steps = CFG.virtual_batch_size // CFG.batch_size
+        df_eval = pd.DataFrame()
+        for column in tqdm(CFG.all_target_cols, desc='Column'):
+            CFG.target_cols = [column]
 
-    print('Training with CFG')
-    pprint(vars(CFG))
+            for k, v in CUSTOM_CONFIGS[column].items():
+                setattr(CFG, k, v)
 
-    df_eval = pd.DataFrame()
-    for fold in range(CFG.n_fold):
+            if CFG.virtual_batch_size <= CFG.batch_size:
+                CFG.batch_size = CFG.virtual_batch_size
+                CFG.gradient_accumulation_steps = 1
+            else:
+                CFG.gradient_accumulation_steps = CFG.virtual_batch_size // CFG.batch_size
+
+            print('Training with CFG')
+            pprint(vars(CFG))
+
+
             wandb_name = CFG.model.split('/')[-1]
             with wandb.init(project=f'FB3-train-{CFG.target_cols[0]}',
-                            name=f'{wandb_name}-{fold}',
+                            name=f'{wandb_name}-{column}-{fold}',
                             config=class2dict(CFG),
                             anonymous=anony,
                             mode=("disabled" if not CFG.wandb else None)) as run:
@@ -655,10 +660,13 @@ if CFG.train:
             LOGGER.info(f"========== fold: {fold} result ==========")
             get_result(df_eval_fold)
 
-    df_eval = df_eval.reset_index(drop=True)
-    LOGGER.info(f"========== CV ==========")
-    get_result(df_eval)
-    df_eval.to_pickle('./' + 'oof_df.pkl')
+        df_eval = df_eval.reset_index(drop=True)
+        LOGGER.info(f"========== CV ==========")
+        get_result(df_eval)
+        df_eval.to_pickle('./' + 'oof_df.pkl')
+    finally:
+        # !touch 'finished'
+
 
 
 # %% [markdown]
