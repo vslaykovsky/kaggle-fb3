@@ -651,11 +651,11 @@ if CFG.train:
         if fold in CFG.trn_fold:
             wandb_name = CFG.model.split('/')[-1]
             with wandb.init(project=f'FB3-train-{CFG.target_cols[0]}',
-                            name=f'lstm-{wandb_name}-{fold}',
+                            name=f'{wandb_name}-{fold}',
                             config=class2dict(CFG),
                             anonymous=anony,
                             mode=("disabled" if not CFG.wandb else None)) as run:
-                df_eval_fold = train_loop(CFG, 'lstm-classifier', df_train, fold, run=run)
+                df_eval_fold = train_loop(CFG, 'regressor', df_train, fold, run=run)
             df_eval = pd.concat([df_eval, df_eval_fold])
             LOGGER.info(f"========== fold: {fold} result ==========")
             get_result(df_eval_fold)
