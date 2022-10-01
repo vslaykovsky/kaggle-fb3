@@ -50,7 +50,7 @@ class CFG:
     all_target_cols = ['cohesion', 'syntax', 'vocabulary', 'phraseology', 'grammar', 'conventions']
     target_cols = ['cohesion']
     seed = 42
-    n_fold = 4
+    n_fold = 8
     trn_fold = [0, 1, 2, 3]
     virtual_batch_size = 3
 
