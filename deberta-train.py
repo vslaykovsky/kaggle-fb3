@@ -19,108 +19,138 @@
 # # CFG
 
 # %%
-import sys
-
-#Benchmark column scores:
-['cohesion', 'syntax', 'vocabulary', 'phraseology', 'grammar', 'conventions']
-
-#baseline
-base = [
-    0.48251612898722873,
-    0.44163526218410554,
-    0.40993880075686456,
-    0.4535148230982543,
-    0.4667161054325501,
-    0.439366242020053
-]
-
-per_col = [
-    0.4782, #
-    0.4369, #
-    0.4093, #
-    0.4496, #
-    0.460, #
-    0.4361, #
-]
-
-import numpy as np
-
-np.mean(np.array(base) - np.array(per_col))
-
-# %%
-np.mean(per_col)
-
-# %%
-try:
-    import colab
-    # only install in colab
-    # !pip install transformers tokenizers sentencepiece optuna wandb
-except:
-    pass
-
-# %%
-"""
-{'epochs': 3, 'pct_warmup_steps': 0.08531545137950809, 'decoder_lr': 0.005477780636724191, 'encoder_lr': 5e-06, 'skip_connection': False, 'per_column_lstm': True, 'scheduler': 'cosine', 'gradient_accumulation_steps': 8, 'emb_type': 'mean'}.
-Best is trial 3 with value: 0.450561181167652.
-
-"""
-
-
 class CFG:
     wandb = True
     debug = False
     train = False
-    optuna = True
+    optuna = False
     optuna_trials = 30
     cross_validation = False
-    unscrew_names = False
 
-    prediction_type = 'regression'  # ['regression', 'classification']
     scheduler = 'cosine'  # ['linear', 'cosine', 'onecycle']
     cosine_num_cycles = 0.5
     batch_scheduler = True
-    pct_warmup_steps = 0.1
-    encoder_lr = 5e-6  # [5e-6, 8e-6, 9e-6, 1e-5]
-    decoder_lr = 5e-3
+    pct_warmup_steps = 0.15
+    encoder_lr = 8.802e-7  # [5e-6, 8e-6, 9e-6, 1e-5]
+    decoder_lr = .00001809
     eps = 1e-6
     betas = (0.9, 0.999)
     weight_decay = 0.01
-    head_weight_decay = 0.01
+    head_weight_decay = 0.
     max_grad = 1.
-    lstm_dropout = 0.1  # [0,0.15,0.3]
-    skip_connection = False
 
     apex = True
     num_workers = 12
-    model = "microsoft/deberta-v3-base"
-    epochs = 3
-    batch_size = 2
-    gradient_checkpointing = False
-    gradient_accumulation_steps = 8  # [8, 16, 32]
-    max_len = 512
-    target_cols = ['cohesion', 'syntax', 'vocabulary', 'phraseology', 'grammar', 'conventions']
+    model = "microsoft/deberta-v3-large"
+    epochs = 6
+    batch_size = 3
+    gradient_checkpointing = True
+    gradient_accumulation_steps = 1  # [8, 16, 32]
+    max_len = 1429
+    all_target_cols = ['cohesion', 'syntax', 'vocabulary', 'phraseology', 'grammar', 'conventions']
+    target_cols = ['cohesion']
     seed = 42
     n_fold = 4
-    # trn_fold=[1]
     trn_fold = [0, 1, 2, 3]
-    emb_type = 'mean'  #'lstm'  # ['lstm', 'mean']
-    frozen_backbone = False
+    virtual_batch_size = 3
 
+
+CUSTOM_CONFIGS = {
+    "cohesion": {
+        # 0.4754
+        "target_cols": ['cohesion'],
+        "decoder_lr": 0.00001809,
+        "encoder_lr": 8.802e-7,
+        "epochs": 6,
+        "model": "microsoft/deberta-v3-large",
+        "pct_warmup_steps": 0.1453,
+        "scheduler": "cosine",
+        "virtual_batch_size": 3
+    },
+    "syntax": {
+        # 0.4369
+        "target_cols": ['syntax'],
+        "decoder_lr": 0.0006275,
+        "encoder_lr": 0.000004268,
+        "epochs": 3,
+        "model": "microsoft/deberta-v3-base",
+        "pct_warmup_steps": 0.26,
+        "scheduler": "linear",
+        "virtual_batch_size": 9
+    },
+    "vocabulary": {
+        # 0.4064
+        "target_cols": ['vocabulary'],
+        "decoder_lr": 0.00001998,
+        "encoder_lr": 0.000001588,
+        "epochs": 7,
+        "model": "microsoft/deberta-v3-large",
+        "pct_warmup_steps": 0.072,
+        "scheduler": "cosine",
+        "virtual_batch_size": 2
+    },
+    "phraseology": {
+        # 0.4496
+        "target_cols": ['phraseology'],
+        "decoder_lr": 0.00008505,
+        "encoder_lr": 0.000002717,
+        "epochs": 6,
+        "model": "microsoft/deberta-v3-large",
+        "pct_warmup_steps": 0.08377,
+        "scheduler": "cosine",
+        "virtual_batch_size": 14
+    },
+    "grammar": {
+        # 0.4601
+        "target_cols": ['grammar'],
+        "decoder_lr": 0.0001013,
+        "encoder_lr": 0.000005008,
+        "epochs": 2,
+        "model": "microsoft/deberta-v3-base",
+        "pct_warmup_steps": 0.2172,
+        "scheduler": "linear",
+        "virtual_batch_size": 5
+    },
+    "conventions": {
+        # 0.4341
+        "target_cols": ['conventions'],
+        "decoder_lr": 0.0001476,
+        "encoder_lr": 0.000007816,
+        "epochs": 3,
+        "model": "microsoft/deberta-v3-base",
+        "pct_warmup_steps": 0.1969,
+        "scheduler": "cosine",
+        "virtual_batch_size": 3
+    },
+}
 
 if CFG.debug:
     CFG.epochs = 4
     CFG.trn_fold = [0]
 
+import sys
+
+if len(sys.argv) > 1:
+    # from console
+    if sys.argv[1] == "train":
+        CFG.train = True
+    elif sys.argv[1] == "optuna":
+        CFG.optuna = True
+
 # %%
 import copy
 import gc
 import warnings
+import sys
+import optuna
+from optuna.integration.wandb import WeightsAndBiasesCallback
 
 import numpy as np
 import optuna
 import pandas as pd
 from sklearn.metrics import mean_squared_error
 from tqdm.auto import tqdm
+from pprint import pprint
 
 try:
     from iterstrat.ml_stratifiers import MultilabelStratifiedKFold
@@ -168,7 +198,9 @@ else:
     FB3_PATH = '/content/drive/MyDrive/kaggle/fb3'
     FB3_PATH = 'data/comp-data'
 
-
+TOTAL_CUDA_MEM = torch.cuda.get_device_properties('cuda:0').total_memory // 10 ** 9
+import os
+os.environ['TOKENIZERS_PARALLELISM'] = 'True'
 
 
 # %% papermill={"duration": 2.436763, "end_time": "2022-09-09T15:49:43.027095", "exception": false, "start_time": "2022-09-09T15:49:40.590332", "status": "completed"} tags=[]
@@ -189,7 +221,7 @@ if CFG.wandb:
         anony = "must"
         print(
             'If you want to use your W&B account, go to Add-ons -> Secrets and provide your W&B access token. Use the Label name as wandb_api. \nGet your W&B access token from here: https://wandb.ai/authorize')
-        wandb.login(key='adc8abc0714ba20c3a534b907b9d6beec640f847')
+        wandb.login(key=os.environ['WANDB_KEY'])
 
 
 def class2dict(f):
@@ -240,34 +272,24 @@ df_train = pd.read_csv(f'{FB3_PATH}/train.csv')
 df_test = pd.read_csv(f'{FB3_PATH}/test.csv')
 df_submission = pd.read_csv(f'{FB3_PATH}/sample_submission.csv')
 
-print(f"train.shape: {df_train.shape}")
-df_train.head()
+df_train
 
 # %%
-print(f"test.shape: {df_test.shape}")
-(df_test.head())
-
+df_test
 
 # %%
-print(f"submission.shape: {df_submission.shape}")
-df_submission.head()
-
-# %%
-df_sent = df_train.cohesion.value_counts().to_frame('cohesion')
-for c in ['syntax', 'vocabulary', 'phraseology', 'grammar', 'conventions']:
-    df_sent = df_sent.join(df_train[c].value_counts())
-df_sent = df_sent.reindex(df_sent.index.sort_values())
-df_sent.plot.bar(figsize=(20, 5), title='Distribution of unique scores per axis')
+df_submission
 
 # %% [markdown] papermill={"duration": 0.008867, "end_time": "2022-09-09T15:50:01.768749", "exception": false, "start_time": "2022-09-09T15:50:01.759882", "status": "completed"} tags=[]
 # # CV split
 
 # %% papermill={"duration": 0.140203, "end_time": "2022-09-09T15:50:01.917878", "exception": false, "start_time": "2022-09-09T15:50:01.777675", "status": "completed"} tags=[]
 kfold = MultilabelStratifiedKFold(n_splits=CFG.n_fold, shuffle=True, random_state=CFG.seed)
-for n, (train_index, val_index) in enumerate(kfold.split(df_train, df_train[CFG.target_cols])):
+for n, (train_index, val_index) in enumerate(kfold.split(df_train, df_train[CFG.all_target_cols])):
     df_train.loc[val_index, 'fold'] = int(n)
 df_train['fold'] = df_train['fold'].astype(int)
 df_train.groupby('fold').size()
+
 
 # %% [markdown] papermill={"duration": 0.00927, "end_time": "2022-09-09T15:50:08.617836", "exception": false, "start_time": "2022-09-09T15:50:08.608566", "status": "completed"} tags=[]
 # # Dataset
@@ -283,68 +305,6 @@ else:
 CFG.tokenizer = tokenizer
 
 
-# %% papermill={"duration": 5.779847, "end_time": "2022-09-09T15:50:14.407211", "exception": false, "start_time": "2022-09-09T15:50:08.627364", "status": "completed"} tags=[]
-# Define max_len
-
-CFG.max_len = 1429
-
-"""
-
-lengths = []
-tk0 = tqdm(df_train['full_text'].fillna("").values, total=len(df_train))
-for text in tk0:
-    length = len(tokenizer(text, add_special_tokens=False)['input_ids'])
-    lengths.append(length)
-CFG.max_len = max(lengths) + 3  # cls & sep & sep
-LOGGER.info(f"max_len: {CFG.max_len}")
-"""
-
-# %%
-from io import StringIO
-import re
-import pandas as pd
-
-NAMES = pd.read_csv(StringIO("""1	Emma	Aidan
-2	Emily	Jacob
-3	Madison	Ethan
-4	Kaitlyn	Nicholas
-5	Sophia	Matthew
-6	Isabella	Ryan
-7	Olivia	Tyler
-8	Hannah	Jack
-9	Makayla	Joshua
-10	Ava	Andrew
-11	Abigail	Dylan
-12	Sarah	Michael
-13	Hailey	Connor"""), sep="\t", header=None).values[:, 1:].flatten()
-NAMES
-
-# %%
-import numpy as np
-
-np.random.choice(NAMES)
-
-# %%
-CITIES = pd.read_csv(StringIO("""1	New York	New York	8,467,513	8,804,190	−3.82%	300.5 sq mi	778.3 km2	29,298/sq mi	11,312/km2	40.66°N 73.93°W
-2	Los Angeles	California	3,849,297	3,898,747	−1.27%	469.5 sq mi	1,216.0 km2	8,304/sq mi	3,206/km2	34.01°N 118.41°W
-3	Chicago	Illinois	2,696,555	2,746,388	−1.81%	227.7 sq mi	589.7 km2	12,061/sq mi	4,657/km2	41.83°N 87.68°W
-4	Houston	Texas	2,288,250	2,304,580	−0.71%	640.4 sq mi	1,658.6 km2	3,599/sq mi	1,390/km2	29.78°N 95.39°W
-5	Phoenix	Arizona	1,624,569	1,608,139	+1.02%	518.0 sq mi	1,341.6 km2	3,105/sq mi	1,199/km2	33.57°N 112.09°W
-6	Philadelphia	Pennsylvania	1,576,251	1,603,797	−1.72%	134.4 sq mi	348.1 km2	11,933/sq mi	4,607/km2	40.00°N 75.13°W
-7	San Antonio	Texas	1,451,853	1,434,625	+1.20%	498.8 sq mi	1,291.9 km2	2,876/sq mi	1,110/km2	29.47°N 98.52°W
-8	San Diego	California	1,381,611	1,386,932	−0.38%	325.9 sq mi	844.1 km2	4,256/sq mi	1,643/km2	32.81°N 117.13°W
-9	Dallas	Texas	1,288,457	1,304,379	−1.22%	339.6 sq mi	879.6 km2	3,841/sq mi	1,483/km2	32.79°N 96.76°W
-10	San Jose	California	983,489	1,013,240	−2.94%	178.3 sq mi	461.8 km2	5,683/sq mi	2,194/km2	37.29°N 121.81°W
-11	Austin	Texas	964,177	961,855	+0.24%	319.9 sq mi	828.5 km2	3,007/sq mi	1,161/km2	30.30°N 97.75°W
-12	Jacksonville	Florida	954,614	949,611	+0.53%	747.3 sq mi	1,935.5 km2	1,271/sq mi	491/km2	30.33°N 81.66°W
-13	Fort Worth	Texas	935,508	918,915	+1.81%	342.9 sq mi	888.1 km2	2,646/sq mi	1,022/km2	32.78°N 97.34°W
-14	Columbus	Ohio	906,528	905,748	+0.09%	220.0 sq mi	569.8 km2	4,117/sq mi	1,590/km2	39.98°N 82.98°W
-15	Indianapolis	Indiana	882,039	887,642	−0.63%	361.6 sq mi	936.5 km2	2,455/sq mi	948/km2	39.77°N 86.14°W
-16	Charlotte	North Carolina	879,709	874,579	+0.59%	308.3 sq mi	798.5 km2	2,837/sq mi	1,095/km2	35.20°N 80.83°W"""),
-                     sep="\t", header=None).values[:, 1]
-CITIES
-
-
 # %% papermill={"duration": 0.033181, "end_time": "2022-09-09T15:50:14.450580", "exception": false, "start_time": "2022-09-09T15:50:14.417399", "status": "completed"} tags=[]
 class TrainDataset(Dataset):
     def __init__(self, cfg: CFG, df):
@@ -357,16 +317,6 @@ class TrainDataset(Dataset):
 
     def __getitem__(self, item):
         s = self.texts[item]
-        if self.cfg.unscrew_names:
-            while True:
-                s, cnt = re.subn('Generic_Name', np.random.choice(NAMES), s, count=1)
-                if cnt == 0:
-                    break
-            re.sub('Generic_School', 'school', self.texts[item])
-            while True:
-                s, cnt = re.subn('Generic_City', np.random.choice(CITIES), s, count=1)
-                if cnt == 0:
-                    break
 
         inputs = self.cfg.tokenizer.encode_plus(
             s,
@@ -397,14 +347,11 @@ if CFG.debug:
     dl = DataLoader(ds, 2, collate_fn=collate_fn)
     next(iter(dl))
 
+
 # %% [markdown] papermill={"duration": 0.0094, "end_time": "2022-09-09T15:50:14.470068", "exception": false, "start_time": "2022-09-09T15:50:14.460668", "status": "completed"} tags=[]
 # # Model
 
 # %%
-from random import random
-from torch.nn import LSTM
-
-
 class MeanPooling(torch.nn.Module):
     def __init__(self):
         super(MeanPooling, self).__init__()
@@ -417,32 +364,6 @@ class MeanPooling(torch.nn.Module):
         mean_embeddings = sum_embeddings / sum_mask
         return mean_embeddings
 
-
-class LSTMPooling(nn.Module):
-    def __init__(self, input_size, dropout, skip_connection):
-        super(LSTMPooling, self).__init__()
-        self.lstm = LSTM(
-            input_size=input_size, hidden_size=input_size // 2, num_layers=1, batch_first=True, bidirectional=True,
-            dropout=dropout
-        )
-        self.skip_connection = skip_connection
-        self.mean_pool = MeanPooling()
-
-    def forward(self, last_hidden_state, attention_mask):
-        mean_pool = self.mean_pool.forward(last_hidden_state, attention_mask)
-        out = []
-        for seq, seq_len, mp in zip(last_hidden_state, attention_mask.sum(dim=1).to(int), mean_pool):
-            inp = seq[:seq_len.item()].unsqueeze(0)
-            output, (h_n, c_n) = self.lstm(inp)
-            lstm_out = torch.concat([h_n[0], h_n[-1]], dim=1)
-            if self.skip_connection:
-                out.append(lstm_out + mp.unsqueeze(0))
-            else:
-                out.append(lstm_out)
-        return torch.concat(out).float()
-
-
-
 def gen_attention_mask(batch, seq):
     np.random.seed(42)
     mask = []
@@ -452,9 +373,6 @@ def gen_attention_mask(batch, seq):
     return torch.as_tensor(mask)
 
 
-# Quick test
-lstm = LSTMPooling(10, 0., False)
-lstm.forward(torch.randn(2, 5, 10), gen_attention_mask(2, 5))
 
 # %%
 MeanPooling().forward(torch.randn(2, 5, 10), gen_attention_mask(2, 5)).shape
@@ -481,15 +399,7 @@ class FB3ClassifierModel(nn.Module):
         if self.cfg.gradient_checkpointing:
             self.model.gradient_checkpointing_enable()
 
-        if self.cfg.frozen_backbone:
-            for p in self.model.parameters():
-                p.requires_grad = False
-
-        if self.cfg.emb_type == 'mean':
-            self.pool = MeanPooling()
-        elif self.cfg.emb_type == 'lstm':
-            self.pool = LSTMPooling(input_size=self.config.hidden_size, dropout=cfg.lstm_dropout,
-                                    skip_connection=cfg.skip_connection)
+        self.pool = MeanPooling()
         self.fc_regression = nn.Linear(self.config.hidden_size, len(self.cfg.target_cols))
         self._init_weights(self.fc_regression)
 
@@ -536,48 +446,6 @@ class RMSELoss(nn.Module):
 
 # Quick test
 loss = RMSELoss()
-
-scaler = torch.cuda.amp.GradScaler(enabled=CFG.apex)
-
-lstm = LSTMPooling(10, 0., True).to(DEVICE)
-
-with torch.cuda.amp.autocast(enabled=True):
-    pred = lstm.forward(torch.randn(2, 5, 10).to(DEVICE), gen_attention_mask(2, 5).to(DEVICE))
-    targets = torch.randn(2, 10).to(DEVICE)
-    l = loss(pred, targets)
-
-scaler.scale(l).backward()
-
-
-
-# %% papermill={"duration": 0.029801, "end_time": "2022-09-09T15:50:33.557859", "exception": false, "start_time": "2022-09-09T15:50:33.528058", "status": "completed"} tags=[]
-class CrossEntropyLoss(nn.Module):
-    def __init__(self, reduction='mean', eps=1e-9):
-        super().__init__()
-        self.reduction = reduction
-        self.eps = eps
-
-    def forward(self, y_pred, y_true):
-        """
-        y_pred.shape = (Batch, Column, ClassProbability)
-        y_true.shape = (Batch, Column)
-        """
-        y_true = (y_true * 2).to(torch.long)  # 1..5 -> 2..10
-        loss = torch.stack([nn.functional.cross_entropy(p, t) for p, t in zip(y_pred, y_true)])
-        if self.reduction == 'none':
-            loss = loss
-        elif self.reduction == 'sum':
-            loss = loss.sum()
-        elif self.reduction == 'mean':
-            loss = loss.mean()
-        return loss
-
-
-# Quick test
-loss = CrossEntropyLoss(reduction='none')
-loss.forward(
-    torch.randn(2, 6, 11), torch.randint(1, 10, (2, 6)) / 2
-)
 
 
 # %% [markdown]
@@ -760,13 +628,29 @@ def get_result(df_eval, cfg=CFG):
 
 
 # %% papermill={"duration": 11979.697909, "end_time": "2022-09-09T19:10:13.399620", "exception": false, "start_time": "2022-09-09T15:50:33.701711", "status": "completed"} tags=[]
-
 if CFG.train:
+    custom_config = "cohesion"
+    if len(sys.argv) == 3:
+        # python deberta-train.py train cohesion
+        custom_config = sys.argv[2]
+
+    for k, v in CUSTOM_CONFIGS[custom_config].items():
+        setattr(CFG, k, v)
+
+    if CFG.virtual_batch_size <= CFG.batch_size:
+        CFG.batch_size = CFG.virtual_batch_size
+        CFG.gradient_accumulation_steps = 1
+    else:
+        CFG.gradient_accumulation_steps = CFG.virtual_batch_size // CFG.batch_size
+
+    print('Training with CFG')
+    pprint(vars(CFG))
+
     df_eval = pd.DataFrame()
     for fold in range(CFG.n_fold):
         if fold in CFG.trn_fold:
             wandb_name = CFG.model.split('/')[-1]
-            with wandb.init(project='FB3-regressor',
+            with wandb.init(project=f'FB3-train-{CFG.target_cols[0]}',
                             name=f'lstm-{wandb_name}-{fold}',
                             config=class2dict(CFG),
                             anonymous=anony,
@@ -830,39 +714,10 @@ if CFG.cross_validation:
 # # Optuna
 
 # %%
-import torch
-total_mem = torch.cuda.get_device_properties('cuda:0').total_memory // 10 ** 9
-
-# %%
-import os
-os.environ['TOKENIZERS_PARALLELISM'] = 'True'
-
-# %%
-# # rm FB3-syntax.sqlite; optuna create-study --study-name "FB3-syntax" --direction minimize    --storage  sqlite:///FB3-syntax.sqlite
+# Use run.sh to create a study
 
 
-# pip install transformers tokenizers sentencepiece optuna wandb iterative-stratification matplotlib pandas
-# apt install nano
-# # mkdir -p data/comp-data
-
-import optuna
-from optuna.integration.wandb import WeightsAndBiasesCallback
-
-
-optuna_column = 'cohesion'
-
-if __name__ == "__main__":
-    if len(sys.argv) == 3:
-        DEVICE, optuna_column = sys.argv[1], sys.argv[2]
-        print('Using device', DEVICE)
-        print('Optimizing for column', optuna_column)
-
-project_name = f"FB3-{optuna_column}"
-wandb_kwargs = {"project": project_name}
-wandbc = WeightsAndBiasesCallback(wandb_kwargs=wandb_kwargs, as_multirun=True)
-
-@wandbc.track_in_wandb()
-def objective(trial: optuna.Trial):
+def objective(trial: optuna.Trial, optuna_column):
     cfg = copy.copy(CFG)
     cfg.target_cols = [optuna_column]
     cfg.epochs = trial.suggest_int('epochs', 1, 7)
@@ -870,26 +725,14 @@ def objective(trial: optuna.Trial):
     cfg.decoder_lr = trial.suggest_float('decoder_lr', 1e-5, 1e-2, log=True)
     cfg.encoder_lr = trial.suggest_float('encoder_lr', 3e-7, 1e-5, log=True)
     cfg.weight_decay = 0.01
-    cfg.head_weight_decay = 0 # trial.suggest_float('head_weight_decay', 1e-10, 1, log=True)
-    cfg.skip_connection =  False #rial.suggest_categorical('skip_connection', [True, False])
-    cfg.prediction_type = 'regression'  #trial.suggest_categorical('prediction_type', ['regression', 'classification'])
     cfg.scheduler = trial.suggest_categorical('scheduler', ['linear', 'cosine'])
     cfg.model = trial.suggest_categorical('model', ['microsoft/deberta-v3-base', "microsoft/deberta-v3-large"])
-    # cfg.model = 'microsoft/deberta-v3-large'
-    if total_mem == 16:
-        if cfg.model == 'microsoft/deberta-v3-base':
-            batch_size = 2
-        elif cfg.model == 'microsoft/deberta-v3-large':
-            batch_size = 1
-    elif total_mem > 16:
-        if cfg.model == 'microsoft/deberta-v3-base':
-            batch_size = 2
-        elif cfg.model == 'microsoft/deberta-v3-large':
-            batch_size = 1
+    if cfg.model == 'microsoft/deberta-v3-base':
+        batch_size = 2
+    elif cfg.model == 'microsoft/deberta-v3-large':
+        batch_size = 1
 
-    print('batch_size', batch_size)
     virtual_batch_size = trial.suggest_int('virtual_batch_size', 1, 64, log=True)
-    # virtual_batch_size = 64
     if virtual_batch_size <= batch_size:
         cfg.batch_size = virtual_batch_size
         cfg.gradient_accumulation_steps = 1
@@ -897,9 +740,6 @@ def objective(trial: optuna.Trial):
         cfg.batch_size = batch_size
         cfg.gradient_accumulation_steps = virtual_batch_size // cfg.batch_size
 
-    cfg.emb_type = 'mean' # trial.suggest_categorical('emb_type', ['lstm', 'mean'])
-    # if cfg.emb_type == 'lstm':
-    #     cfg.lstm_dropout = trial.suggest_categorical('lstm_dropout', [0, 0.15, 0.3])
 
     df_eval_fold = train_loop(cfg, 'FB3-regressor', df_train, fold=0, save_model=False, verbose=False)
     score, _ = get_result(df_eval_fold, cfg)
@@ -907,123 +747,28 @@ def objective(trial: optuna.Trial):
 
 
 if CFG.optuna:
+    optuna_column = 'cohesion'
+
+    # running from console
+    if len(sys.argv) == 4:
+        # python deberta-train.py optuna cuda:1 cohesion
+        DEVICE, optuna_column = sys.argv[2], sys.argv[3]
+    elif len(sys.argv) == 3:
+        # python deberta-train.py optuna cohesion
+        optuna_column = sys.argv[2]
+
+    print('Using device', DEVICE)
+    print('Optimizing for column', optuna_column)
+
+    project_name = f"FB3-{optuna_column}"
+    wandb_kwargs = {"project": project_name}
+    wandbc = WeightsAndBiasesCallback(wandb_kwargs=wandb_kwargs, as_multirun=True)
+
     if os.path.exists(f'{project_name}.sqlite'):
-        print(f'loading study from sqlite:///{project_name}.sqlite')
+        print(f'Loading study from sqlite:///{project_name}.sqlite')
         study = optuna.load_study(study_name=project_name, storage=f'sqlite:///{project_name}.sqlite')
     else:
         print('Creating new in-memory study')
         study = optuna.create_study(direction='minimize')
-    study.optimize(lambda trial: objective(trial), n_trials=CFG.optuna_trials, callbacks=[wandbc])
 
-
-# %% [markdown]
-# # Sentence-wise modeling
-
-# %%
-def split_string(s):
-    v = s.split("\n\n")
-    r = []
-    for i in v:
-        if len(i) < 50:
-            continue
-        n_seg = int(math.ceil(len(i) / 1000))
-        n_len = len(i) // n_seg
-        for k in range(n_seg):
-            if k == n_seg - 1:
-                r.append(i[k * n_len:])
-            else:
-                r.append(i[k * n_len:(k + 1) * n_len])
-            # print(k, n_seg, r[-1])
-    return r
-
-
-df_sent = df_train.join(df_train.full_text.apply(lambda s: split_string(s)).explode(), rsuffix='_sent')
-df_sent['sent_len'] = df_sent.full_text_sent.str.len()
-df_sent.head()
-
-# %%
-df_sent.sent_len.plot.hist(bins=100, figsize=(20, 5))
-
-# %%
-plt.figure(figsize=(20, 10))
-for i, c in enumerate(CFG.target_cols):
-    ax = plt.subplot(3, 2, i + 1)
-    ax = df_sent.groupby('full_text').median()[['sent_len', 'syntax']].reset_index().pivot(columns='syntax',
-                                                                                           values='sent_len',
-                                                                                           index='full_text').plot.box(
-        title=c, ax=ax
-    )
-    ax.set_ylim(0, 2000)
-
-# %%
-cfg = copy.copy(CFG)
-cfg.epochs = 4
-
-# %%
-for fold in range(0, cfg.n_fold):
-    with wandb.init(project='FB3-sent-classifier',
-                    name=f'deberta-v3-{fold}',
-                    config=class2dict(cfg)) as run:
-        torch.cuda.empty_cache()
-        gc.collect()
-        train_loop(cfg, 'lstm-sent-classifier',
-                   df_sent.drop(columns=['full_text', 'sent_len']).rename(columns={'full_text_sent': 'full_text'}),
-                   fold, run)
-
-
-# %%
-def pred_log_proba(cfg, model, df, device):
-    ds_val = TrainDataset(cfg, df)
-    dl_val = DataLoader(ds_val,
-                        collate_fn=collate_fn,
-                        batch_size=cfg.batch_size * 2,
-                        shuffle=False,
-                        num_workers=cfg.num_workers,
-                        pin_memory=True,
-                        drop_last=False)
-
-    model.eval()
-    preds = []
-    with tqdm(dl_val, desc='Pred proba') as progress:
-        for step, (inputs, labels) in enumerate(progress):
-            for k, v in inputs.items():
-                inputs[k] = v.to(device)
-            with torch.no_grad():
-                y_preds = model.predict(inputs, raw=True)
-                preds.append(y_preds.to('cpu').numpy())
-
-    predictions = np.concatenate(preds)
-    return torch.nn.functional.log_softmax(torch.as_tensor(predictions), dim=-1)
-
-
-def text_scores(df):
-    probas = np.array(df.proba.values.tolist())
-    text_proba = np.reshape(np.sum(probas, axis=0), (6, 11))
-    text_scores = np.argmax(text_proba, axis=-1) / 2.
-    s = pd.Series(index=[f'pred_{c}' for c in CFG.target_cols], data=text_scores)
-    return s
-
-
-scores = []
-for fold in range(cfg.n_fold):
-    gc.collect()
-    torch.cuda.empty_cache()
-    model = FB3ClassifierModel(cfg, config_path=None, pretrained=True)
-    model.load_state_dict(
-        torch.load(f'microsoft-deberta-v3-base_fold{fold}_best.pth', map_location=torch.device('cuda'))['model'])
-    model.to(DEVICE)
-
-    df_sent_valid = df_sent.query('fold==@fold').copy()
-    valid_proba = pred_log_proba(cfg, model, df_sent_valid.drop(columns=['full_text', 'sent_len']).rename(
-        columns={'full_text_sent': 'full_text'}), DEVICE)
-    df_sent_valid['proba'] = valid_proba.reshape(len(valid_proba), -1).tolist()
-
-    df_valid = df_train.query('fold == @fold').copy()
-    df_valid = df_valid.set_index('text_id').join(
-        df_sent_valid.groupby('text_id')[['proba']].apply(lambda df: text_scores(df)))
-    score, _ = get_result(df_valid)
-    scores.append(score)
-
-
-# %%
-np.mean(scores)
+    study.optimize(lambda trial: objective(trial, optuna_column), n_trials=CFG.optuna_trials, callbacks=[wandbc])

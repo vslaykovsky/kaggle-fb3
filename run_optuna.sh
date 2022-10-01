@@ -1,7 +1,7 @@
 trap "trap - SIGTERM && kill -- -$$" SIGINT SIGTERM EXIT
 
 if test $# -ne 1; then
-  echo 'run.sh column'
+  echo 'run_optuna.sh column'
   exit 1
 fi
 
@@ -20,6 +20,6 @@ fi
 last_gpu=$(($num_gpus - 1))
 
 for i in $(seq 0 $last_gpu); do
-  python deberta-train.py cuda:$i $column &
+  python deberta-train.py optuna cuda:$i $column &
 done
 wait
