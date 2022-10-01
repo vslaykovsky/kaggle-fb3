@@ -51,7 +51,6 @@ class CFG:
     target_cols = ['cohesion']
     seed = 42
     n_fold = 8
-    trn_fold = [0, 1, 2, 3]
     virtual_batch_size = 3
 
 
@@ -124,9 +123,6 @@ CUSTOM_CONFIGS = {
     },
 }
 
-if CFG.debug:
-    CFG.epochs = 4
-    CFG.trn_fold = [0]
 
 import sys
 
@@ -648,7 +644,6 @@ if CFG.train:
 
     df_eval = pd.DataFrame()
     for fold in range(CFG.n_fold):
-        if fold in CFG.trn_fold:
             wandb_name = CFG.model.split('/')[-1]
             with wandb.init(project=f'FB3-train-{CFG.target_cols[0]}',
                             name=f'{wandb_name}-{fold}',
