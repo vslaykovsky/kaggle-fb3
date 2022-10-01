@@ -665,7 +665,9 @@ if CFG.train:
         get_result(df_eval)
         df_eval.to_pickle('./' + 'oof_df.pkl')
     finally:
-        # !touch 'finished'
+        with open('finished', 'w+') as f:
+            f.write(' ')
+
 
 
 
