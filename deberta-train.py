@@ -579,7 +579,7 @@ def train_loop(cfg: CFG, name, df_folds=None, fold=None, df_train_folds=None, df
     criterion = RMSELoss()
     best_score = np.inf
     best_val_pred = None
-    best_model_file_name = f"{name}_fold{fold}_best.pth"
+    best_model_file_name = f"{name}_fold{fold}.pth"
     for epoch in tqdm(range(cfg.epochs), desc='Epochs'):
         # train
         train_loss = train_fn(cfg, dl_train, model, criterion, optimizer, scheduler, DEVICE, run, verbose)
@@ -656,7 +656,7 @@ if CFG.train:
                             config=class2dict(CFG),
                             anonymous=anony,
                             mode=("disabled" if not CFG.wandb else None)) as run:
-                df_eval_fold = train_loop(CFG, 'regressor', df_train, fold, run=run)
+                df_eval_fold = train_loop(CFG, f'{column}', df_train, fold, run=run, save_model=True)
             df_eval = pd.concat([df_eval, df_eval_fold])
             LOGGER.info(f"========== fold: {fold} result ==========")
             get_result(df_eval_fold)
