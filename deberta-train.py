@@ -218,6 +218,7 @@ if CFG.wandb:
         print(
             'If you want to use your W&B account, go to Add-ons -> Secrets and provide your W&B access token. Use the Label name as wandb_api. \nGet your W&B access token from here: https://wandb.ai/authorize')
         wandb.login(key=os.environ['WANDB_KEY'])
+        # wandb.login(key='adc8abc0714ba20c3a534b907b9d6beec640f847')
 
 
 def class2dict(f):
@@ -629,7 +630,7 @@ if CFG.train:
         fold = 0
         if len(sys.argv) == 3:
             # python deberta-train.py train cohesion
-            fold = sys.argv[2]
+            fold = int(sys.argv[2])
 
 
         df_eval = pd.DataFrame()
